@@ -6,8 +6,10 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install only the system libraries required at runtime
+# Install system libraries required at runtime.
+# libgomp1  — OpenMP runtime needed by faiss-cpu
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency file first to leverage Docker layer caching
