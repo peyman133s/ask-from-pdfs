@@ -41,7 +41,39 @@ python -m src.cli index
 python -m src.cli ask "What is this document about?"
 ```
 
-### Using Docker
+### Using Docker Compose (recommended)
+
+```bash
+# 1. Copy the environment template and fill in your OPENAI_API_KEY
+cp .env.example .env
+
+# 2. Add PDFs to the input folder
+cp your-documents/*.pdf data/pdfs/
+
+# 3. Build the image
+docker compose build
+
+# 4. Index the PDFs
+docker compose run --rm app python -m src.cli index
+
+# 5. Ask a question
+docker compose run --rm app python -m src.cli ask "What is this document about?"
+```
+
+The `data/pdfs/` and `data/index/` directories are bind-mounted from the host, so the
+generated vector index persists between runs. Downloaded embedding model weights are
+cached in a named Docker volume (`model_cache`) so they are not re-downloaded each time.
+
+**Interactive dev shell** (live-reloads code changes via a volume mount):
+
+```bash
+docker compose --profile dev run --rm app-dev
+# Inside the container:
+python -m src.cli index
+python -m src.cli ask "What is this document about?"
+```
+
+### Using Docker directly
 
 **Development** (project directory mounted as a volume):
 ```bash
@@ -68,10 +100,11 @@ docker run --rm \
 ```
 ask-from-pdfs/
 ├── docs/                   # PRD and architecture docs
-├── src/                    # Application source (to be implemented)
+├── src/                    # Application source
 ├── data/pdfs/              # Drop PDFs here
 ├── tests/                  # Tests
 ├── .env.example            # Environment variable template
+├── docker-compose.yml      # Compose file (prod + dev profiles)
 ├── Dockerfile              # Production image
 └── Dockerfile.dev          # Development image
 ```

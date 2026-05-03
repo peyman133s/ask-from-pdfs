@@ -1,0 +1,62 @@
+# docker-compose.yml — ask-from-pdfs
+#
+# Usage
+# -----
+# Build images:
+#   docker compose build
+#
+# Index PDFs placed in ./data/pdfs/:
+#   docker compose run --rm app python -m src.cli index
+#
+# Ask a question:
+#   docker compose run --rm app python -m src.cli ask "What is this document about?"
+#
+# Interactive dev shell (requires --profile dev):
+#   docker compose --profile dev run --rm app-dev
+
+services:
+
+  # ── Production service ────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ask-from-pdfs:latest
+    # Load environment variables from .env (copy .env.example → .env first)
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Input PDFs — place your files here on the host
+      - ./data/pdfs:/app/data/pdfs
+      # Persisted vector index — auto-created on first `index` run
+      - ./data/index:/app/data/index
+      # Cache sentence-transformers / HuggingFace models between container runs
+      - model_cache:/root/.cache
+    # This is a CLI tool; override the command at `docker compose run` time.
+    # The default CMD in the Dockerfile prints --help.
+
+  # ── Development service (opt-in via --profile dev) ────────────────────────────
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: ask-from-pdfs:dev
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Mount the whole project for live code changes
+      - .:/app
+      # Share the model cache with the prod service
+      - model_cache:/root/.cache
+    stdin_open: true
+    tty: true
+    profiles:
+      - dev
+
+# ── Named volumes ──────────────────────────────────────────────────────────────
+volumes:
+  # Persists downloaded sentence-transformers / HuggingFace model weights
+  # so they are not re-downloaded on every container start.
+  model_cache:
