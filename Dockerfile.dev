@@ -1,0 +1,26 @@
+# Development Dockerfile
+# Includes dev dependencies (testing, linting, hot-reload helpers)
+# Mounts the project directory as a volume for fast iteration
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies needed by PDF libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency file first to leverage Docker layer caching
+COPY requirements.txt ./
+
+# Install Python dependencies including dev extras
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the project
+COPY . .
+
+# Default: drop into a shell for interactive development
+# Override with docker run ... python -m src.cli index
+CMD ["bash"]

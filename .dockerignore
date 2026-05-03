@@ -1,0 +1,37 @@
+# Files and directories to exclude from the Docker build context
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local secrets — never include in image
+.env
+
+# Generated index — provide via volume mount at runtime
+data/index/
+
+# Test and dev artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# Editor / OS
+.idea/
+.vscode/
+*.DS_Store
