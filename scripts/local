@@ -1,0 +1,182 @@
+#!/usr/bin/env sh
+set -eu
+
+PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+VENV_DIR="${VENV_DIR:-$PROJECT_ROOT/.venv}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.org/simple}"
+
+print_usage() {
+  cat <<USAGE
+Usage: scripts/local <command> [args]
+
+Commands:
+  setup              Create .venv and install requirements.txt locally
+  download-embedding-model
+                     Download the embedding model into models/all-MiniLM-L6-v2
+  index              Index PDFs from data/pdfs into data/index
+  ask <question>     Ask a question against the local index
+  shell              Open a shell with the local environment activated
+  test [pytest args] Run tests with pytest
+  help               Show this help
+
+Environment overrides:
+  VENV_DIR           Virtualenv path (default: .venv)
+  PYTHON_BIN         Python executable for setup (default: python3)
+  PIP_INDEX_URL      PyPI index for setup (default: https://pypi.org/simple)
+  HF_ENDPOINT        Hugging Face compatible endpoint for model downloads
+
+Examples:
+  scripts/local setup
+  scripts/local download-embedding-model
+  scripts/local index
+  scripts/local ask "What is this document about?"
+  PIP_INDEX_URL=https://mirror-pypi.runflare.com/simple scripts/local setup
+USAGE
+}
+
+ensure_project_root() {
+  cd "$PROJECT_ROOT"
+}
+
+ensure_env_file() {
+  if [ ! -f .env ] && [ -f .env.example ]; then
+    cp .env.example .env
+    printf 'Created .env from .env.example. Edit it before using OpenAI-backed commands.\n'
+  fi
+}
+
+ensure_data_dirs() {
+  mkdir -p data/pdfs data/index
+}
+
+setup_venv() {
+  ensure_project_root
+  ensure_data_dirs
+  ensure_env_file
+
+  if [ ! -d "$VENV_DIR" ]; then
+    "$PYTHON_BIN" -m venv "$VENV_DIR"
+  fi
+
+  # shellcheck disable=SC1091
+  . "$VENV_DIR/bin/activate"
+  python -m pip install --upgrade pip
+  python -m pip install --index-url "$PIP_INDEX_URL" -r requirements.txt
+
+  cat <<SETUP_DONE
+
+Local environment is ready.
+Run:
+  scripts/local index
+  scripts/local ask "What is this document about?"
+SETUP_DONE
+}
+
+activate_venv() {
+  if [ ! -x "$VENV_DIR/bin/python" ]; then
+    cat >&2 <<MISSING_VENV
+Local virtualenv was not found at:
+  $VENV_DIR
+
+Run this first:
+  scripts/local setup
+MISSING_VENV
+    exit 1
+  fi
+
+  # shellcheck disable=SC1091
+  . "$VENV_DIR/bin/activate"
+}
+
+run_cli() {
+  ensure_project_root
+  ensure_data_dirs
+  ensure_env_file
+  activate_venv
+  python -m src.cli "$@"
+}
+
+download_embedding_model() {
+  ensure_project_root
+  activate_venv
+
+  MODEL_REPO="${LOCAL_EMBEDDING_MODEL_REPO:-sentence-transformers/all-MiniLM-L6-v2}"
+  MODEL_DIR="${LOCAL_EMBEDDING_MODEL_DIR:-$PROJECT_ROOT/models/all-MiniLM-L6-v2}"
+
+  mkdir -p "$MODEL_DIR"
+  printf "Downloading embedding model '%s' to '%s' …\n" "$MODEL_REPO" "$MODEL_DIR"
+
+  python - "$MODEL_REPO" "$MODEL_DIR" <<'PY'
+import sys
+from sentence_transformers import SentenceTransformer
+
+model_repo = sys.argv[1]
+model_dir = sys.argv[2]
+
+model = SentenceTransformer(model_repo)
+model.save(model_dir)
+print(f"Saved local embedding model to: {model_dir}")
+PY
+
+  cat <<DOWNLOAD_DONE
+
+Add this to .env to force fully local embedding use:
+  LOCAL_EMBEDDING_MODEL=models/all-MiniLM-L6-v2
+  HF_HUB_OFFLINE=1
+DOWNLOAD_DONE
+}
+
+open_shell() {
+  ensure_project_root
+  ensure_data_dirs
+  ensure_env_file
+  activate_venv
+  printf 'Activated local environment at %s\n' "$VENV_DIR"
+  exec "${SHELL:-/bin/sh}"
+}
+
+run_tests() {
+  ensure_project_root
+  activate_venv
+  python -m pytest "$@"
+}
+
+COMMAND="${1:-help}"
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+
+case "$COMMAND" in
+  setup)
+    setup_venv "$@"
+    ;;
+  download-embedding-model)
+    download_embedding_model "$@"
+    ;;
+  index)
+    run_cli index "$@"
+    ;;
+  ask)
+    if [ "$#" -eq 0 ]; then
+      printf 'Error: ask requires a question.\n\n' >&2
+      print_usage >&2
+      exit 1
+    fi
+    run_cli ask "$*"
+    ;;
+  shell)
+    open_shell "$@"
+    ;;
+  test)
+    run_tests "$@"
+    ;;
+  help|--help|-h)
+    print_usage
+    ;;
+  *)
+    printf 'Error: unknown command: %s\n\n' "$COMMAND" >&2
+    print_usage >&2
+    exit 1
+    ;;
+esac
