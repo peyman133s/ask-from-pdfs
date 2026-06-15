@@ -6,9 +6,9 @@
 |---|---|
 | PDF text extraction | `pypdf` or `pdfminer.six` |
 | Text chunking | custom splitter or `langchain` text splitters |
-| Embeddings | `sentence-transformers` (local) or OpenAI embeddings |
+| Embeddings | `sentence-transformers` local embeddings |
 | Vector store | FAISS (local file) or Chroma (local persistent) |
-| LLM generation | OpenAI `gpt-4o-mini` via API, or a local model via Ollama |
+| LLM generation | GapGPT API |
 | CLI | Python `argparse` or `click` |
 | Config | `python-dotenv` + `.env` file |
 

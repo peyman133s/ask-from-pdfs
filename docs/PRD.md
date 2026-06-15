@@ -74,4 +74,4 @@ The project is intended as a small, agent-friendly starter repo for iterative co
 ### Open Questions
 - Which LLM provider should be used by default?
 - Should the first implementation use FAISS or Chroma?
-- Should embeddings be local (sentence-transformers) or hosted (OpenAI)?
+- Embeddings run locally with sentence-transformers.

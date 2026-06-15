@@ -1,8 +1,11 @@
 """Tests for src.generator."""
 from __future__ import annotations
 
+import importlib
+import json
 from unittest.mock import MagicMock, patch
 
+import src.generator as generator_mod
 from src.generator import generate
 
 
@@ -20,17 +23,34 @@ class TestGenerate:
         ]
 
         mock_response = MagicMock()
-        mock_response.choices[0].message.content = "  The answer.  "
+        mock_response.__enter__.return_value.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "  The answer.  "}}]}
+        ).encode("utf-8")
 
-        mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = mock_response
-
-        with patch("src.generator.OpenAI", return_value=mock_client):
-            with patch.dict("os.environ", {"OPENAI_API_KEY": "fake-key"}):
+        with patch("src.generator.urllib.request.urlopen", return_value=mock_response):
+            with patch.dict("os.environ", {"GAPGPT_API_KEY": "fake-key"}):
                 answer, sources = generate("What is this?", chunks)
 
         assert answer == "The answer."
         assert sources == ["a.pdf", "b.pdf"]  # deduplicated, order preserved
+
+    def test_uses_current_gapgpt_api_endpoint_by_default(self, monkeypatch):
+        monkeypatch.delenv("GAPGPT_API_URL", raising=False)
+        generator = importlib.reload(generator_mod)
+        chunks = [{"filename": "a.pdf", "chunk_index": 0, "text": "Some context."}]
+
+        mock_response = MagicMock()
+        mock_response.__enter__.return_value.read.return_value = json.dumps(
+            {"answer": "answer"}
+        ).encode("utf-8")
+
+        with patch("src.generator.urllib.request.urlopen", return_value=mock_response) as mock_urlopen:
+            with patch.dict("os.environ", {"GAPGPT_API_KEY": "fake-key"}):
+                generator.generate("What is this?", chunks)
+
+        request = mock_urlopen.call_args.args[0]
+        assert request.full_url == "https://api.gapgpt.app/v1/chat/completions"
+        assert request.get_method() == "POST"
 
     def test_source_order_preserved(self, monkeypatch):
         chunks = [
@@ -39,12 +59,12 @@ class TestGenerate:
         ]
 
         mock_response = MagicMock()
-        mock_response.choices[0].message.content = "answer"
-        mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = mock_response
+        mock_response.__enter__.return_value.read.return_value = json.dumps(
+            {"answer": "answer"}
+        ).encode("utf-8")
 
-        with patch("src.generator.OpenAI", return_value=mock_client):
-            with patch.dict("os.environ", {"OPENAI_API_KEY": "fake-key"}):
+        with patch("src.generator.urllib.request.urlopen", return_value=mock_response):
+            with patch.dict("os.environ", {"GAPGPT_API_KEY": "fake-key"}):
                 _, sources = generate("q", chunks)
 
         assert sources == ["z.pdf", "a.pdf"]

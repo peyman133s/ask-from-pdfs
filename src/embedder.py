@@ -1,11 +1,4 @@
-"""Embedding generation: convert text chunks into dense vectors.
-
-Supports two providers:
-- ``local``  — sentence-transformers (no API key required, fully offline).
-- ``openai`` — OpenAI ``text-embedding-3-small`` (requires ``OPENAI_API_KEY``).
-
-The provider is selected via the ``EMBEDDING_PROVIDER`` environment variable.
-"""
+"""Embedding generation: convert text chunks into dense vectors locally."""
 from __future__ import annotations
 
 import logging
@@ -19,13 +12,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "local").lower()
-_LOCAL_MODEL_NAME = "all-MiniLM-L6-v2"
-_OPENAI_MODEL_NAME = "text-embedding-3-small"
+_DEFAULT_LOCAL_MODEL_PATH = "models/all-MiniLM-L6-v2"
+_LOCAL_MODEL_NAME = os.getenv("LOCAL_EMBEDDING_MODEL", _DEFAULT_LOCAL_MODEL_PATH)
 
 # Module-level model cache (loaded lazily)
 _local_model = None
-_openai_client = None
 
 
 def _get_local_model():
@@ -33,18 +24,32 @@ def _get_local_model():
     if _local_model is None:
         from sentence_transformers import SentenceTransformer  # noqa: PLC0415
 
+        cache_folder = os.getenv("SENTENCE_TRANSFORMERS_HOME")
+        offline_env = os.getenv("HF_HUB_OFFLINE", "").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        local_files_only = offline_env or os.path.isdir(_LOCAL_MODEL_NAME)
+
         logger.info("Loading local embedding model '%s'…", _LOCAL_MODEL_NAME)
-        _local_model = SentenceTransformer(_LOCAL_MODEL_NAME)
+        try:
+            _local_model = SentenceTransformer(
+                _LOCAL_MODEL_NAME,
+                cache_folder=cache_folder,
+                local_files_only=local_files_only,
+            )
+        except OSError as exc:
+            if local_files_only:
+                raise RuntimeError(
+                    "Local embedding model is not available. Download it once with "
+                    "`scripts/local download-embedding-model`, or set "
+                    "LOCAL_EMBEDDING_MODEL to an existing sentence-transformers "
+                    f"model directory. Current value: '{_LOCAL_MODEL_NAME}'."
+                ) from exc
+            raise
     return _local_model
-
-
-def _get_openai_client():
-    global _openai_client  # noqa: PLW0603
-    if _openai_client is None:
-        from openai import OpenAI  # noqa: PLC0415
-
-        _openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    return _openai_client
 
 
 def embed_texts(texts: list[str]) -> np.ndarray:
@@ -59,20 +64,9 @@ def embed_texts(texts: list[str]) -> np.ndarray:
     if not texts:
         return np.empty((0, 0), dtype=np.float32)
 
-    if _PROVIDER == "local":
-        model = _get_local_model()
-        vectors = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
-        return vectors.astype(np.float32)
-
-    if _PROVIDER == "openai":
-        client = _get_openai_client()
-        response = client.embeddings.create(input=texts, model=_OPENAI_MODEL_NAME)
-        vectors = [item.embedding for item in response.data]
-        return np.array(vectors, dtype=np.float32)
-
-    raise ValueError(
-        f"Unknown EMBEDDING_PROVIDER '{_PROVIDER}'. Choose 'local' or 'openai'."
-    )
+    model = _get_local_model()
+    vectors = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
+    return vectors.astype(np.float32)
 
 
 def embed_chunks(chunks: list[Chunk]) -> np.ndarray:

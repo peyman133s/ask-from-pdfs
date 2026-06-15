@@ -24,27 +24,83 @@ A minimal Python starter project for asking questions over PDF documents using a
 git clone https://github.com/peyman133s/ask-from-pdfs.git
 cd ask-from-pdfs
 
-# 2. Set up environment
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY (if using OpenAI)
+# 2. Create a local virtualenv and install dependencies
+scripts/local setup
 
-# 3. Install dependencies
-pip install -r requirements.txt
+# 3. Download the embedding model once into ./models
+scripts/local download-embedding-model
 
-# 4. Add PDFs
+# 4. Edit .env and add your GAPGPT_API_KEY
+#    Keep GAPGPT_API_URL at https://api.gapgpt.app/v1/chat/completions
+
+# 5. Add PDFs
 cp your-documents/*.pdf data/pdfs/
 
-# 5. Index the PDFs
-python -m src.cli index
+# 6. Index the PDFs
+scripts/local index
 
-# 6. Ask a question
-python -m src.cli ask "What is this document about?"
+# 7. Ask a question
+scripts/local ask "What is this document about?"
 ```
 
-### Using Docker Compose (recommended)
+The local script avoids Docker builds completely. It creates `.venv`, copies
+`.env.example` to `.env` if needed, creates `data/pdfs/` and `data/index/`, and
+runs the existing Python CLI from your host machine.
+
+If you need a different Python package mirror, override `PIP_INDEX_URL` only for
+local setup:
 
 ```bash
-# 1. Copy the environment template and fill in your OPENAI_API_KEY
+PIP_INDEX_URL=https://mirror-pypi.runflare.com/simple scripts/local setup
+```
+
+Other useful local commands:
+
+```bash
+scripts/local download-embedding-model
+scripts/local shell
+scripts/local test
+```
+
+### Local embeddings
+
+Embeddings use `sentence-transformers` locally and do not require an API key. The
+project is configured to load the model from `models/all-MiniLM-L6-v2` with
+`HF_HUB_OFFLINE=1`, so normal indexing does not contact Hugging Face after the model
+folder exists.
+
+Download the model once:
+
+```bash
+scripts/local download-embedding-model
+```
+
+If direct Hugging Face access is unavailable from Iran, set a Hugging Face-compatible
+mirror/proxy for the download step:
+
+```bash
+HF_ENDPOINT=https://hf-mirror.com scripts/local download-embedding-model
+```
+
+You can also copy an already-downloaded `sentence-transformers` model folder into
+`models/all-MiniLM-L6-v2`, or point `.env` at another local folder:
+
+```bash
+LOCAL_EMBEDDING_MODEL=/absolute/path/to/all-MiniLM-L6-v2
+HF_HUB_OFFLINE=1
+```
+
+### Using Docker Compose
+
+The Docker setup uses Iran-accessible mirrors by default:
+
+- Base images are pulled through ArvanCloud: `docker.arvancloud.ir/python`
+- Debian packages use ArvanCloud mirrors
+- Python packages use an Iran-accessible PyPI mirror
+
+```bash
+# 1. Copy the environment template and fill in your GAPGPT_API_KEY
+#    Keep GAPGPT_API_URL at https://api.gapgpt.app/v1/chat/completions
 cp .env.example .env
 
 # 2. Add PDFs to the input folder
@@ -60,9 +116,21 @@ docker compose run --rm app python -m src.cli index
 docker compose run --rm app python -m src.cli ask "What is this document about?"
 ```
 
+If a mirror is stale or unavailable, override it at build time:
+
+```bash
+DEBIAN_MIRROR=http://mirror.arvancloud.ir/debian \
+DEBIAN_SECURITY_MIRROR=http://mirror.arvancloud.ir/debian-security \
+PIP_INDEX_URL=https://mirror-pypi.runflare.com/simple \
+docker compose build
+```
+
 The `data/pdfs/` and `data/index/` directories are bind-mounted from the host, so the
 generated vector index persists between runs. Downloaded embedding model weights are
 cached in a named Docker volume (`model_cache`) so they are not re-downloaded each time.
+After the first successful model download, set `HF_HUB_OFFLINE=1` in `.env` to use the
+cached model only and avoid Hugging Face startup `HEAD` requests that can time out on
+slow or restricted connections.
 
 **Interactive dev shell** (live-reloads code changes via a volume mount):
 
@@ -91,6 +159,17 @@ docker run --rm \
   -v "$(pwd)/data":/app/data \
   --env-file .env \
   ask-from-pdfs python -m src.cli ask "What is this document about?"
+```
+
+**Using a ready image**:
+
+If you publish this app image to an ArvanCloud Container Registry, you can skip local
+Dockerfile builds and point Compose at that image instead:
+
+```yaml
+services:
+  app:
+    image: <your-arvan-registry>/<namespace>/ask-from-pdfs:latest
 ```
 
 ---

@@ -1,7 +1,7 @@
 # Production Dockerfile
 # Lean runtime image — no dev/test dependencies
 
-FROM python:3.11-slim
+FROM docker.arvancloud.ir/python:3.11-slim
 
 # Set working directory
 WORKDIR /app

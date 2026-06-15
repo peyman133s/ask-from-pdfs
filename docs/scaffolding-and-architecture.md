@@ -94,8 +94,9 @@ ask-from-pdfs/
 
 ### 3. Embeddings (`src/embedder.py`)
 - Converts a list of text chunks into dense vectors.
-- Default: `sentence-transformers` (runs fully offline, no API key needed).
-- Swap for OpenAI embeddings by changing `EMBEDDING_PROVIDER` in `.env`.
+- Default: local `sentence-transformers` model folder at `models/all-MiniLM-L6-v2`.
+- Embeddings run locally with no API key and no server call.
+- Run `scripts/local download-embedding-model` once to create the local model folder.
 
 ### 4. Vector Store (`src/vector_store.py`)
 - Wraps a FAISS flat index (or Chroma persistent store).
@@ -109,7 +110,7 @@ ask-from-pdfs/
 
 ### 6. LLM Generation (`src/generator.py`)
 - Builds a prompt from the question and retrieved chunks.
-- Calls the configured LLM (default: OpenAI `gpt-4o-mini`).
+- Calls the configured LLM through GapGPT (default: `gpt-4o`).
 - Returns the answer text plus the list of source filenames.
 
 ### 7. CLI (`src/cli.py`)
@@ -127,9 +128,12 @@ All configuration is read from environment variables (loaded from `.env` via `py
 |---|---|---|
 | `PDF_DIR` | Folder containing input PDFs | `data/pdfs` |
 | `INDEX_DIR` | Folder for the persisted vector index | `data/index` |
-| `EMBEDDING_PROVIDER` | `local` (sentence-transformers) or `openai` | `local` |
-| `OPENAI_API_KEY` | Required when using OpenAI embeddings or LLM | — |
-| `LLM_MODEL` | LLM model name | `gpt-4o-mini` |
+| `LOCAL_EMBEDDING_MODEL` | Local sentence-transformers embedding model path | `models/all-MiniLM-L6-v2` |
+| `HF_HUB_OFFLINE` | Force local Hugging Face/model loading only | `1` |
+| `HF_ENDPOINT` | Optional Hugging Face-compatible model download endpoint | — |
+| `GAPGPT_API_KEY` | Required when using GapGPT for LLM answers | — |
+| `GAPGPT_API_URL` | GapGPT chat endpoint | `https://api.gapgpt.app/v1/chat/completions` |
+| `LLM_MODEL` | LLM model name | `gpt-4o` |
 | `CHUNK_SIZE` | Characters (or tokens) per chunk | `500` |
 | `CHUNK_OVERLAP` | Overlap between consecutive chunks | `50` |
 | `TOP_K` | Number of chunks to retrieve | `3` |
