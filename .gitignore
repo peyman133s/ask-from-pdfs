@@ -18,6 +18,8 @@ env/
 
 # Generated index (too large to commit; volume-mount in Docker)
 data/index/
+data/workspace/
+node_modules/
 
 # Test / lint caches
 .pytest_cache/

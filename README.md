@@ -1,12 +1,40 @@
 # ask-from-pdfs
 
-A minimal Python starter project for asking questions over PDF documents using a retrieval-augmented generation (RAG) pipeline.
+A local workspace for uploading documents and asking questions with source excerpts. The PDF command-line workflow is also available.
 
-> **Status:** scaffold / starter — ready for agentic coding.
+## Run Ask from Files
+
+Use Python 3.10+ and Node.js 20.19+ or 22.12+. Install Tesseract with English and Persian language data for image and scanned PDF OCR, Poppler for scanned PDF rendering, and LibreOffice for legacy DOC files.
+
+On macOS, Homebrew provides the native tools:
+
+```sh
+brew install tesseract tesseract-lang poppler
+brew install --cask libreoffice
+```
+
+If a tool is outside your PATH, set its executable path in `.env` using `SOFFICE_BIN`, `TESSERACT_BIN`, or `PDFTOPPM_BIN`. Use `tesseract --list-langs` to check for `eng` and `fas`. Set `OCR_LANGUAGES=fas` for Persian-only OCR.
+
+```sh
+python3 -m venv .venv/web
+.venv/web/bin/python -m pip install -r requirements-web.txt
+npm --prefix web ci
+npm --prefix web run build
+test -f .env || cp .env.example .env
+.venv/web/bin/python -m uvicorn src.web:app --host 127.0.0.1 --port 8000 --workers 1
+```
+
+Open [Ask from Files](http://127.0.0.1:8000). Upload XLS, XLSX, PDF, DOC, DOCX, PNG, JPG, or JPEG files, assign a category, and select **Ingest selected**. When files show **Ready**, open **Ask a Question** and choose which category to search.
+
+Set `AVALAI_API_KEY` in the ignored local `.env` for answers. Set `LLM_MODEL` if your AvalAI key uses a different chat model. Extraction, OCR, and embeddings run locally. AvalAI receives the question and retrieved excerpts for each answer. [AvalAI API reference](https://docs.avalai.org/en/api-reference/introduction)
+
+The workspace accepts up to 20 files per upload, each up to 50 MiB. Its originals, SQLite library, and indexes live in `data/workspace/` by default. Keep one server process per workspace directory. A stopped ingestion appears as **Failed** at the next startup and can be retried from the library.
+
+For frontend development, run the API on port 8000 and start `npm --prefix web run dev`. To run the Python tests, install `pytest` and `httpx` in the web virtualenv and run `.venv/web/bin/python -m pytest`.
 
 ---
 
-## What it does
+## PDF command-line workflow
 
 1. Ingest a folder of PDFs and extract text
 2. Chunk the text and generate embeddings
@@ -30,8 +58,8 @@ scripts/local setup
 # 3. Download the embedding model once into ./models
 scripts/local download-embedding-model
 
-# 4. Edit .env and add your GAPGPT_API_KEY
-#    Keep GAPGPT_API_URL at https://api.gapgpt.app/v1/chat/completions
+# 4. Edit .env and add your AVALAI_API_KEY
+#    Keep AVALAI_API_URL at https://api.avalai.ir/v1/chat/completions
 
 # 5. Add PDFs
 cp your-documents/*.pdf data/pdfs/
@@ -99,8 +127,8 @@ The Docker setup uses Iran-accessible mirrors by default:
 - Python packages use an Iran-accessible PyPI mirror
 
 ```bash
-# 1. Copy the environment template and fill in your GAPGPT_API_KEY
-#    Keep GAPGPT_API_URL at https://api.gapgpt.app/v1/chat/completions
+# 1. Copy the environment template and fill in your AVALAI_API_KEY
+#    Keep AVALAI_API_URL at https://api.avalai.ir/v1/chat/completions
 cp .env.example .env
 
 # 2. Add PDFs to the input folder

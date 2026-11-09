@@ -17,6 +17,8 @@ env/
 
 # Generated index — provide via volume mount at runtime
 data/index/
+data/workspace/
+node_modules/
 
 # Test and dev artifacts
 .pytest_cache/

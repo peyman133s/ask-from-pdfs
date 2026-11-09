@@ -8,7 +8,7 @@
 | Text chunking | custom splitter or `langchain` text splitters |
 | Embeddings | `sentence-transformers` local embeddings |
 | Vector store | FAISS (local file) or Chroma (local persistent) |
-| LLM generation | GapGPT API |
+| LLM generation | AvalAI API |
 | CLI | Python `argparse` or `click` |
 | Config | `python-dotenv` + `.env` file |
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -94,11 +93,24 @@ def search(
     Returns:
         List of chunk dicts (each with ``filename``, ``chunk_index``, ``text``).
     """
-    query_vector = np.array(query_vector, dtype=np.float32).reshape(1, -1)
+    return [chunk for _, chunk in search_with_distances(index, chunks, query_vector, top_k)]
+
+
+def search_with_distances(
+    index: faiss.IndexFlatL2,
+    chunks: list[dict],
+    query_vector: np.ndarray,
+    top_k: int,
+) -> list[tuple[float, dict]]:
+    """Return matching chunks and squared L2 distances for merging results across indexes."""
+    query_vector = np.asarray(query_vector, dtype=np.float32).reshape(1, -1)
     k = min(top_k, index.ntotal)
-    if k == 0:
+    if k <= 0:
         return []
 
-    _, indices = index.search(query_vector, k)
-    results = [chunks[i] for i in indices[0] if i >= 0]
-    return results
+    distances, indices = index.search(query_vector, k)
+    return [
+        (float(distance), chunks[i])
+        for distance, i in zip(distances[0], indices[0])
+        if i >= 0
+    ]

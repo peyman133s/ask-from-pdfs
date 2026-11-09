@@ -110,7 +110,7 @@ ask-from-pdfs/
 
 ### 6. LLM Generation (`src/generator.py`)
 - Builds a prompt from the question and retrieved chunks.
-- Calls the configured LLM through GapGPT (default: `gpt-4o`).
+- Calls the configured LLM through AvalAI (default: `gpt-4o`).
 - Returns the answer text plus the list of source filenames.
 
 ### 7. CLI (`src/cli.py`)
@@ -131,8 +131,8 @@ All configuration is read from environment variables (loaded from `.env` via `py
 | `LOCAL_EMBEDDING_MODEL` | Local sentence-transformers embedding model path | `models/all-MiniLM-L6-v2` |
 | `HF_HUB_OFFLINE` | Force local Hugging Face/model loading only | `1` |
 | `HF_ENDPOINT` | Optional Hugging Face-compatible model download endpoint | — |
-| `GAPGPT_API_KEY` | Required when using GapGPT for LLM answers | — |
-| `GAPGPT_API_URL` | GapGPT chat endpoint | `https://api.gapgpt.app/v1/chat/completions` |
+| `AVALAI_API_KEY` | Required when using AvalAI for LLM answers | — |
+| `AVALAI_API_URL` | AvalAI chat endpoint | `https://api.avalai.ir/v1/chat/completions` |
 | `LLM_MODEL` | LLM model name | `gpt-4o` |
 | `CHUNK_SIZE` | Characters (or tokens) per chunk | `500` |
 | `CHUNK_OVERLAP` | Overlap between consecutive chunks | `50` |
