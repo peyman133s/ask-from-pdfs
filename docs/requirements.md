@@ -1,46 +1,22 @@
-# Requirements
+# Functional requirements
 
-## Functional Requirements
+## File library and ingestion
 
-### PDF Ingestion
-- The system must read PDF files from a configured input folder.
-- The system must extract text from each PDF.
-- The system must ignore unsupported or empty files gracefully.
+- Accept XLS, XLSX, PDF, DOC, DOCX, PNG, JPG, and JPEG uploads. Enforce 1–20 files per upload, a 50 MiB limit per file, and a supported filename extension.
+- Assign one category per file. Default to **Uncategorized**, allow category creation and reassignment, and filter the library by category or ingestion status.
+- Store original files and metadata locally. Queue up to 20 file IDs per ingestion request and process jobs sequentially. Persist **Uploaded**, **Ingesting**, **Ready**, and **Failed** states.
+- Extract text from supported documents and spreadsheets. Use OCR for images and PDF pages with no extractable text. Preserve page numbers and sheet names where available.
+- Reject ingestion when extraction produces no readable text or exceeds two million characters per file. Display a failure reason and offer retry. Mark interrupted work as failed on the next startup.
 
-### Chunking
-- The system must split extracted text into smaller chunks.
-- The chunking strategy must be simple and configurable (e.g. chunk size, overlap).
+## Questions and sources
 
-### Embeddings and Indexing
-- The system must generate embeddings for each chunk.
-- The system must store embeddings in a vector index.
-- The vector index must support similarity search.
+- Accept a nonblank question of up to 4,000 characters. Search ready files across the workspace or in the selected category.
+- Embed the question locally and retrieve up to `TOP_K` matching chunks, with a default of three. Send the question and retrieved excerpts to AvalAI for a grounded answer.
+- Return numbered excerpts with source filenames and available locations. Show an empty-scope message when there are no ready files and show actionable provider errors.
 
-### Querying
-- The system must accept a user question from the CLI.
-- The system must retrieve the top 3 most relevant chunks.
-- The system must pass the question and retrieved chunks to an LLM.
-- The system must return a natural-language answer.
+## PDF CLI
 
-### Output
-- The system must print the answer in the CLI.
-- The system must display source filenames for the retrieved chunks.
+- Index text PDFs from the configured input directory. Skip unreadable or textless PDFs with a warning.
+- Generate local embeddings and persist a separate FAISS index. Print answers and deduplicated source filenames to the terminal.
 
-## Data Requirements
-- Input documents must be PDF files.
-- Metadata should include at least:
-  - Filename
-  - Chunk index
-  - Optional page number if available
-
-## Quality Requirements
-- The answer should be grounded in retrieved context.
-- If relevant context is missing, the system should say so clearly.
-- The CLI should provide helpful error messages.
-
-## Implementation Constraints
-- Use Python 3.10+.
-- Keep dependencies minimal.
-- Prefer a local-first development experience.
-- Design the code so it can be extended later.
-- Configuration via environment variables or a `.env` file.
+See the [architecture](scaffolding-and-architecture.md) for storage and API details.

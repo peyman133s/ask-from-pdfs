@@ -1,61 +1,21 @@
-# Implementation Notes
+# Implementation notes
 
-## Suggested Stack
+## Extraction tools
 
-| Layer | Library |
-|---|---|
-| PDF text extraction | `pypdf` or `pdfminer.six` |
-| Text chunking | custom splitter or `langchain` text splitters |
-| Embeddings | `sentence-transformers` local embeddings |
-| Vector store | FAISS (local file) or Chroma (local persistent) |
-| LLM generation | AvalAI API |
-| CLI | Python `argparse` or `click` |
-| Config | `python-dotenv` + `.env` file |
+| Input | Extraction | Source location |
+|---|---|---|
+| PDF | pypdf extracts text per page. Poppler renders pages without text for Tesseract OCR. | Page |
+| XLS | xlrd reads cell values and serializes rows as text. | Sheet |
+| XLSX | openpyxl reads stored cell values in read-only mode. Formula cells depend on cached results. | Sheet |
+| DOCX | python-docx reads paragraphs and table cells. | Filename |
+| DOC | Headless LibreOffice converts the original to DOCX in a temporary directory. | Filename |
+| PNG, JPG, JPEG | Tesseract extracts visible text. | Filename |
 
-## Suggested Repo Structure
+The web worker defaults to Tesseract languages `eng+fas`. For executable and language-data overrides, see the [environment template](../.env.example). The PDF CLI uses pypdf for text extraction. For scanned PDFs in the CLI workflow, run OCR before indexing.
 
-```
-ask-from-pdfs/
-├── docs/                   # PRD and planning docs
-├── src/
-│   ├── __init__.py
-│   ├── cli.py              # Entry point: index / ask commands
-│   ├── ingest.py           # PDF loading and text extraction
-│   ├── chunker.py          # Text chunking logic
-│   ├── embedder.py         # Embedding generation
-│   ├── vector_store.py     # FAISS / Chroma wrapper
-│   ├── retriever.py        # Similarity search
-│   └── generator.py        # LLM call and answer formatting
-├── data/
-│   ├── pdfs/               # Drop PDF files here
-│   └── index/              # Auto-generated vector index (git-ignored)
-├── tests/
-│   └── test_*.py
-├── .env.example            # Template for environment variables
-├── requirements.txt
-├── Dockerfile              # Production image
-├── Dockerfile.dev          # Development image
-└── .dockerignore
-```
+## Running and changing the project
 
-## Suggested Milestones
-
-| # | Milestone |
-|---|---|
-| 1 | Project skeleton, docs, and Docker setup |
-| 2 | PDF loading and text extraction (`ingest.py`) |
-| 3 | Chunking and embedding pipeline (`chunker.py`, `embedder.py`) |
-| 4 | Vector index creation and persistence (`vector_store.py`) |
-| 5 | Similarity retrieval (`retriever.py`) |
-| 6 | LLM answer generation (`generator.py`) |
-| 7 | CLI wiring — `index` and `ask` commands |
-| 8 | Source attribution in output |
-| 9 | Basic tests and cleanup |
-
-## Agentic Coding Notes
-- Keep functions small and composable with clear inputs and outputs.
-- Prefer explicit interfaces between ingestion, retrieval, and generation modules.
-- Make configuration file-based or environment-based so the agent can change it without touching code.
-- Log intermediate steps (`logging` module) so the agent can inspect failures easily.
-- Keep the first version simple — avoid premature optimisation.
-- Each module should be independently importable and testable.
+- Run the web backend with a single Uvicorn worker. The ingestion queue runs in the same process. The library polls file status through `GET /api/files`.
+- Set `LOCAL_EMBEDDING_MODEL` to a local sentence-transformer directory for offline embeddings. If you switch embedding models, rebuild the CLI index and re-upload and ingest the affected files in a fresh web workspace so stored and query vectors use the same model.
+- Keep `AVALAI_API_KEY` in a local server environment or Git-ignored `.env`. `LLM_MODEL`, `AVALAI_API_URL`, and `AVALAI_TIMEOUT_SECONDS` configure both clients. The API uses the credential when calling AvalAI.
+- Use [the README](../README.md#run-ask-from-files) to install and build, and the [acceptance walkthrough](acceptance-criteria.md) to verify both entry points.

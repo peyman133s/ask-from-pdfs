@@ -1,17 +1,13 @@
-# Out of Scope
+# Scope boundaries
 
-The following items are intentionally not included in the first version of this project:
+The current web workspace supports browser uploads, categories, batch ingestion, OCR, and questions over ready files. The PDF CLI covers folder-based text extraction, indexing, and questions.
 
-- Web application or browser UI
-- User accounts or authentication
-- Multi-user collaboration
-- OCR for scanned PDFs
-- Advanced ranking or reranking models
-- Streaming responses
-- Conversation memory across multiple turns
-- External database integrations beyond the vector store
-- Production deployment concerns (scaling, HA, load balancing)
-- Monitoring, analytics, or observability dashboards
-- Support for non-PDF file types (Word, HTML, images, etc.)
-- Async or batch ingestion pipelines
-- Fine-tuning or training of any model
+The current release leaves these features out of scope:
+
+- Accounts, authentication, shared libraries, and multi-user collaboration
+- Public hosting, distributed workers, and high-availability deployment
+- File formats beyond XLS, XLSX, PDF, DOC, DOCX, PNG, JPG, and JPEG
+- File deletion or replacement through the browser
+- Streaming answers, persistent conversation history, and multi-turn retrieval
+- Advanced reranking, model training, and fine-tuning
+- External document repositories and operational analytics dashboards
