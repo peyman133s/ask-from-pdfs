@@ -1,5 +1,7 @@
 # ask-from-pdfs
 
+**Author** [@peyman133s](https://github.com/peyman133s)
+
 A local workspace for uploading documents and asking questions with source excerpts. The PDF command-line workflow is also available.
 
 ## Run Ask from Files
